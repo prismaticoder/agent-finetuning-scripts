@@ -50,7 +50,12 @@ def extract_pairs(repo, limit, out_path):
         if len(prompt) < 50:
             continue  # skip PRs with no description
 
-        pairs.append({"prompt": prompt, "completion": completion})
+        pairs.append({
+            "messages": [
+                {"role": "user", "content": prompt},
+                {"role": "assistant", "content": completion},
+            ]
+        })
         print(f"  ✓ PR #{number}: {title[:60]}")
 
     print(f"\nExtracted {len(pairs)} pairs.")

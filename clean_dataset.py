@@ -23,8 +23,11 @@ def clean(input_files, out_path):
                     pair = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                prompt = pair.get("prompt", "").strip()
-                completion = pair.get("completion", "").strip()
+                messages = pair.get("messages", [])
+                if len(messages) < 2:
+                    continue
+                prompt = messages[0].get("content", "").strip()
+                completion = messages[1].get("content", "").strip()
 
                 if len(prompt) < MIN_PROMPT_LEN or len(completion) < MIN_COMPLETION_LEN:
                     continue
@@ -33,7 +36,7 @@ def clean(input_files, out_path):
                 if key in seen:
                     continue
                 seen.add(key)
-                clean_pairs.append({"prompt": prompt, "completion": completion})
+                clean_pairs.append({"messages": messages})
 
     print(f"Final dataset: {len(clean_pairs)} pairs")
     with open(out_path, "w") as f:

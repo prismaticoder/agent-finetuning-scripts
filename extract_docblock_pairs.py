@@ -34,8 +34,10 @@ def extract_from_python(content):
         body = body.strip()
         if len(docstring) > 20 and len(body) > 20:
             pairs.append({
-                "prompt": f"Implement a Python function based on this description:\n{docstring}",
-                "completion": body
+                "messages": [
+                    {"role": "user", "content": f"Implement a Python function based on this description:\n{docstring}"},
+                    {"role": "assistant", "content": body},
+                ]
             })
     return pairs
 
@@ -47,8 +49,10 @@ def extract_from_typescript(content):
         body = body.strip()
         if len(jsdoc) > 20 and len(body) > 20:
             pairs.append({
-                "prompt": f"Implement a TypeScript function based on this description:\n{jsdoc}",
-                "completion": body
+                "messages": [
+                    {"role": "user", "content": f"Implement a TypeScript function based on this description:\n{jsdoc}"},
+                    {"role": "assistant", "content": body},
+                ]
             })
     return pairs
 
