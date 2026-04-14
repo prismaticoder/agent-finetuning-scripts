@@ -2,6 +2,10 @@
 """
 coder.py — CLI harness for your finetuned coding assistant.
 
+Requires a vLLM server running with your LoRA adapter:
+  vllm serve Qwen/Qwen3-8B --enable-lora \
+    --lora-modules my-coder=your-username/my-coder-v1 --port 8000
+
 Usage:
   python coder.py "How does the auth middleware handle expired tokens?"
   python coder.py --repo /path/to/repo "What does the UserService class do?"
@@ -14,7 +18,7 @@ import json
 import argparse
 import urllib.request
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+VLLM_URL = "http://localhost:8000/v1/chat/completions"
 MODEL = "my-coder"
 MAX_CONTEXT_CHARS = 6000  # leave room for the model's response
 
@@ -44,23 +48,22 @@ def search_codebase(repo_path, query):
 def ask(query, repo_path):
     context = search_codebase(repo_path, query)
 
+    user_content = query
     if context:
-        prompt = (
+        user_content = (
             f"The following code snippets are from the codebase:\n\n"
             f"```\n{context}\n```\n\n"
             f"Question: {query}"
         )
-    else:
-        prompt = query
 
     payload = json.dumps({
         "model": MODEL,
-        "prompt": prompt,
-        "stream": True
+        "messages": [{"role": "user", "content": user_content}],
+        "stream": True,
     }).encode()
 
     req = urllib.request.Request(
-        OLLAMA_URL,
+        VLLM_URL,
         data=payload,
         headers={"Content-Type": "application/json"}
     )
@@ -68,14 +71,20 @@ def ask(query, repo_path):
     try:
         with urllib.request.urlopen(req) as response:
             for line in response:
-                chunk = json.loads(line.decode())
-                print(chunk.get("response", ""), end="", flush=True)
-                if chunk.get("done"):
+                line = line.decode().strip()
+                if not line.startswith("data:"):
+                    continue
+                data = line[len("data:"):].strip()
+                if data == "[DONE]":
                     print()
                     break
+                chunk = json.loads(data)
+                delta = chunk["choices"][0]["delta"].get("content", "")
+                if delta:
+                    print(delta, end="", flush=True)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
-        print("Is Ollama running? Try: ollama serve", file=sys.stderr)
+        print("Is vLLM running? Try: vllm serve Qwen/Qwen3-8B --enable-lora --lora-modules my-coder=... --port 8000", file=sys.stderr)
         sys.exit(1)
 
 if __name__ == "__main__":
